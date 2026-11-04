@@ -5,4 +5,4 @@ Chạy lệnh sau trong Terminal:
 Chạy lệnh sau trong Terminal:
 `docker run -p 3000:3000 nguyencong234945/frontend`
 ### Triển khai Frontend trên Render
-- URL Frontend: `https://ten-ung-dung-cua-ban.onrender.com`
+- URL Frontend: `https://two34945-nguyenchicong.onrender.com`
