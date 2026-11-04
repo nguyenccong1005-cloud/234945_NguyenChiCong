@@ -6,3 +6,5 @@ Chạy lệnh sau trong Terminal:
 `docker run -p 3000:3000 nguyencong234945/frontend`
 ### Triển khai Frontend trên Render
 - URL Frontend: `https://two34945-nguyenchicong.onrender.com`
+### Triển khai Backend API trên Render
+- URL Backend API: `https://two34945-nguyenchicong-234945.onrender.com`
