@@ -1,128 +1,146 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import './App.css';
+
+// Cấu hình địa chỉ backend (sẽ đổi khi deploy Render)
+const API_URL = 'http://localhost:5000/api/devices';
 
 function App() {
-  const [books, setBooks] = useState([]);
+  const [devices, setDevices] = useState([]);
   const [search, setSearch] = useState('');
-  const [form, setForm] = useState({
-    bookId: '', title: '', author: '', category: '', publisher: '', publishYear: '', isbn: '', quantity: '', description: ''
-  });
-  const [editingId, setEditingId] = useState(null);
-  const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState('');
+  const [form, setForm] = useState({ deviceId: '', name: '', deviceType: '', room: '', quantity: 1, status: 'Đang sử dụng' });
+  const [isEdit, setIsEdit] = useState(false);
+  const [editId, setEditId] = useState(null);
 
-  // Sử dụng đúng đường dẫn tuyệt đối port 5000 trên Codespaces của bạn
-  const API_URL = 'https://paranormal-spooky-gravestone-77wqx64xxw97crw-5000.app.github.dev/api/books';
-  const fetchBooks = async () => {
+  // Lấy dữ liệu khi vừa mở trang
+  useEffect(() => { fetchDevices(); }, []);
+
+  const fetchDevices = async (keyword = '') => {
+    setLoading(true);
     try {
-      const res = await axios.get(`${API_URL}?search=${search}`);
-      setBooks(res.data);
-      setMessage(''); // Xóa thông báo lỗi nếu tải thành công
-    } catch (err) {
-      console.error('Lỗi khi tải danh sách sách:', err);
-      setMessage('Có lỗi xảy ra khi kết nối tới Server!');
+      const res = await axios.get(`${API_URL}?search=${keyword}`);
+      setDevices(res.data);
+      setMsg('');
+    } catch (err) { 
+      setMsg('Lỗi tải dữ liệu từ server'); 
     }
+    setLoading(false);
   };
 
-  useEffect(() => {
-    fetchBooks();
-  }, [search]);
+  const handleSearch = (e) => { 
+    e.preventDefault(); 
+    fetchDevices(search); 
+  };
+
+  const handleChange = (e) => { 
+    setForm({ ...form, [e.target.name]: e.target.value }); 
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      if (editingId) {
-        await axios.put(`${API_URL}/${editingId}`, form);
-        setMessage('Cập nhật sách thành công!');
+      if (isEdit) {
+        await axios.put(`${API_URL}/${editId}`, form);
+        setMsg('Cập nhật thiết bị thành công!');
       } else {
         await axios.post(API_URL, form);
-        setMessage('Thêm sách thành công!');
+        setMsg('Thêm thiết bị thành công!');
       }
-      setForm({ bookId: '', title: '', author: '', category: '', publisher: '', publishYear: '', isbn: '', quantity: '', description: '' });
-      setEditingId(null);
-      fetchBooks();
-    } catch (err) {
-      setMessage(err.response?.data?.message || 'Có lỗi xảy ra khi lưu sách');
+      setForm({ deviceId: '', name: '', deviceType: '', room: '', quantity: 1, status: 'Đang sử dụng' });
+      setIsEdit(false);
+      fetchDevices();
+    } catch (err) { 
+      setMsg(err.response?.data?.error || 'Có lỗi xảy ra, vui lòng kiểm tra lại'); 
     }
   };
 
-  const handleEdit = (book) => {
-    setForm(book);
-    setEditingId(book._id);
+  const handleEdit = (d) => {
+    setForm({ deviceId: d.deviceId, name: d.name, deviceType: d.deviceType, room: d.room, quantity: d.quantity, status: d.status });
+    setIsEdit(true); 
+    setEditId(d._id);
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Bạn có chắc muốn xóa sách này?')) {
-      try {
-        await axios.delete(`${API_URL}/${id}`);
-        setMessage('Xóa sách thành công!');
-        fetchBooks();
-      } catch (err) {
-        setMessage('Lỗi khi xóa sách');
-      }
+    if (!window.confirm('Bạn có chắc muốn xóa thiết bị này?')) return;
+    try {
+      await axios.delete(`${API_URL}/${id}`);
+      setMsg('Đã xóa thiết bị!'); 
+      fetchDevices();
+    } catch (err) { 
+      setMsg('Lỗi khi xóa thiết bị'); 
     }
   };
 
   return (
-    <div style={{ padding: '20px', fontFamily: 'Arial' }}>
-      <h2>QUẢN LÝ THƯ VIỆN SÁCH - MSSV: 234945 - Nguyễn Chí Công</h2>
-      {message && <p style={{ color: message.includes('thành công') ? 'green' : 'red', fontWeight: 'bold' }}>{message}</p>}
+    <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
+      <h2>Hệ Thống Quản Lý Thiết Bị Phòng Học</h2>
+      
+      {msg && <p style={{ color: msg.includes('thành công') || msg.includes('Đã xóa') ? 'green' : 'red', fontWeight: 'bold' }}>{msg}</p>}
+      {loading && <p>Đang tải dữ liệu...</p>}
 
-      {/* Form thêm/sửa sách */}
-      <form onSubmit={handleSubmit} style={{ background: '#f4f4f4', padding: '15px', marginBottom: '20px', borderRadius: '5px' }}>
-        <h3>{editingId ? 'Cập nhật thông tin sách' : 'Thêm sách mới'}</h3>
-        <input placeholder="Mã sách (bookId)" value={form.bookId} onChange={e => setForm({...form, bookId: e.target.value})} required disabled={editingId} style={{margin: '5px', padding: '8px'}} />
-        <input placeholder="Tên sách" value={form.title} onChange={e => setForm({...form, title: e.target.value})} required style={{margin: '5px', padding: '8px'}} />
-        <input placeholder="Tác giả" value={form.author} onChange={e => setForm({...form, author: e.target.value})} required style={{margin: '5px', padding: '8px'}} />
-        <input placeholder="Thể loại" value={form.category} onChange={e => setForm({...form, category: e.target.value})} required style={{margin: '5px', padding: '8px'}} />
-        <input placeholder="Nhà xuất bản" value={form.publisher} onChange={e => setForm({...form, publisher: e.target.value})} style={{margin: '5px', padding: '8px'}} />
-        <input placeholder="Năm xuất bản" type="number" value={form.publishYear} onChange={e => setForm({...form, publishYear: e.target.value})} style={{margin: '5px', padding: '8px'}} />
-        <input placeholder="ISBN" value={form.isbn} onChange={e => setForm({...form, isbn: e.target.value})} style={{margin: '5px', padding: '8px'}} />
-        <input placeholder="Số lượng" type="number" value={form.quantity} onChange={e => setForm({...form, quantity: e.target.value})} style={{margin: '5px', padding: '8px'}} />
-        <br />
-        <textarea placeholder="Mô tả" value={form.description} onChange={e => setForm({...form, description: e.target.value})} style={{margin: '5px', padding: '8px', width: '90%'}} />
-        <br />
-        <button type="submit" style={{padding: '10px 20px', background: 'blue', color: 'white', border: 'none', cursor: 'pointer'}}>
-          {editingId ? 'Lưu thay đổi' : 'Thêm sách'}
-        </button>
-        {editingId && <button type="button" onClick={() => { setEditingId(null); setForm({ bookId: '', title: '', author: '', category: '', publisher: '', publishYear: '', isbn: '', quantity: '', description: '' }); }} style={{marginLeft: '10px', padding: '10px 20px'}}>Hủy</button>}
+      {/* Form Tìm kiếm */}
+      <form onSubmit={handleSearch} style={{ marginBottom: '20px' }}>
+        <input 
+          name="search" 
+          placeholder="Nhập từ khóa (Tên, Mã, Phòng)..." 
+          value={search} 
+          onChange={(e) => setSearch(e.target.value)} 
+          style={{ width: '300px', padding: '5px' }}
+        />
+        <button type="submit" style={{ padding: '5px 10px', marginLeft: '5px' }}>Tìm kiếm</button>
+        <button type="button" onClick={() => {setSearch(''); fetchDevices('');}} style={{ padding: '5px 10px', marginLeft: '5px' }}>Xem Tất Cả</button>
       </form>
 
-      {/* Tìm kiếm */}
-      <div style={{ marginBottom: '20px' }}>
-        <input placeholder="Tìm kiếm theo tên, tác giả, thể loại..." value={search} onChange={e => setSearch(e.target.value)} style={{padding: '8px', width: '300px'}} />
-      </div>
+      {/* Form Thêm/Sửa */}
+      <form onSubmit={handleSubmit} style={{ marginBottom: '20px', padding: '15px', border: '1px solid #ccc', backgroundColor: '#f9f9f9' }}>
+        <h3>{isEdit ? 'Sửa thông tin thiết bị' : 'Thêm thiết bị mới'}</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+          <input name="deviceId" placeholder="Mã thiết bị (VD: PRJ01)" value={form.deviceId} onChange={handleChange} required disabled={isEdit} />
+          <input name="name" placeholder="Tên thiết bị (VD: Máy chiếu Sony)" value={form.name} onChange={handleChange} required />
+          <input name="deviceType" placeholder="Loại (VD: Máy chiếu)" value={form.deviceType} onChange={handleChange} required />
+          <input name="room" placeholder="Phòng học (VD: A101)" value={form.room} onChange={handleChange} required />
+          <input name="quantity" type="number" min="1" placeholder="Số lượng" value={form.quantity} onChange={handleChange} required />
+          <select name="status" value={form.status} onChange={handleChange}>
+            <option value="Đang sử dụng">Đang sử dụng</option>
+            <option value="Hư hỏng">Hư hỏng</option>
+            <option value="Đang sửa chữa">Đang sửa chữa</option>
+            <option value="Ngừng sử dụng">Ngừng sử dụng</option>
+          </select>
+        </div>
+        <br/>
+        <button type="submit" style={{ padding: '8px 15px', cursor: 'pointer' }}>{isEdit ? 'Lưu Cập Nhật' : 'Thêm Thiết Bị'}</button>
+        {isEdit && <button type="button" onClick={() => { setIsEdit(false); setForm({ deviceId: '', name: '', deviceType: '', room: '', quantity: 1, status: 'Đang sử dụng' }); }} style={{ padding: '8px 15px', marginLeft: '10px' }}>Hủy</button>}
+      </form>
 
-      {/* Bảng danh sách sách */}
-      <table border="1" cellPadding="10" style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead>
-          <tr style={{ background: '#ddd' }}>
-            <th>Mã sách</th>
-            <th>Tên sách</th>
-            <th>Tác giả</th>
-            <th>Thể loại</th>
-            <th>NXB</th>
-            <th>Năm</th>
+      {/* Bảng Hiển thị Danh sách */}
+      <table border="1" cellPadding="10" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+        <thead style={{ backgroundColor: '#eeeeee' }}>
+          <tr>
+            <th>Mã TB</th>
+            <th>Tên Thiết Bị</th>
+            <th>Loại</th>
+            <th>Phòng</th>
             <th>SL</th>
-            <th>Hành động</th>
+            <th>Trạng thái</th>
+            <th>Thao tác</th>
           </tr>
         </thead>
         <tbody>
-          {books.map(book => (
-            <tr key={book._id}>
-              <td>{book.bookId}</td>
-              <td>{book.title}</td>
-              <td>{book.author}</td>
-              <td>{book.category}</td>
-              <td>{book.publisher}</td>
-              <td>{book.publishYear}</td>
-              <td>{book.quantity}</td>
+          {devices.length > 0 ? devices.map(d => (
+            <tr key={d._id}>
+              <td>{d.deviceId}</td>
+              <td>{d.name}</td>
+              <td>{d.deviceType}</td>
+              <td>{d.room}</td>
+              <td>{d.quantity}</td>
+              <td style={{ color: d.status === 'Hư hỏng' ? 'red' : (d.status === 'Ngừng sử dụng' ? 'gray' : 'green'), fontWeight: 'bold' }}>{d.status}</td>
               <td>
-                <button onClick={() => handleEdit(book)} style={{marginRight: '5px', background: 'orange', border: 'none', padding: '5px 10px', cursor: 'pointer'}}>Sửa</button>
-                <button onClick={() => handleDelete(book._id)} style={{background: 'red', color: 'white', border: 'none', padding: '5px 10px', cursor: 'pointer'}}>Xóa</button>
+                <button onClick={() => handleEdit(d)} style={{ marginRight: '5px' }}>Sửa</button>
+                <button onClick={() => handleDelete(d._id)}>Xóa</button>
               </td>
             </tr>
-          ))}
+          )) : <tr><td colSpan="7" style={{ textAlign: 'center' }}>Không có dữ liệu</td></tr>}
         </tbody>
       </table>
     </div>
